@@ -22,7 +22,7 @@ PM_START_TEXT = """
 
 __im a group manager bot maintained by__  **TeamAtul**.
 
-My future updates will be put into This Channel - [TeamAtul](t.me/TeamAtul_official & [My Support Group](t.me/TeamAtul_support_official).
+My future updates will be put into This Channel - [TeamAtul](t.me/TeamAtul_official) & [My Support Group](t.me/TeamAtul_support_official).
 
 
 For more commands click /help...
