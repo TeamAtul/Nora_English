@@ -2,7 +2,6 @@
 Available Commands:
 .telegraph media as reply to a media
 .telegraph text as reply to a large text"""
-from telethon import events
 import os
 from PIL import Image
 from datetime import datetime
