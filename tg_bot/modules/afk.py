@@ -11,7 +11,6 @@ afk_time = None
 last_afk_message = {}
 
 
-@borg.on(events.NewMessage(outgoing=True))  # pylint:disable=E0602
 async def set_not_afk(event):
     global USER_AFK  # pylint:disable=E0602
     global afk_time  # pylint:disable=E0602
@@ -35,7 +34,6 @@ async def set_not_afk(event):
         USER_AFK = {}  # pylint:disable=E0602
         afk_time = None  # pylint:disable=E0602
 
-@borg.on(admin_cmd(pattern=r"afk ?(.*)"))
 
 async def _(event):
     if event.fwd_from:
@@ -72,7 +70,6 @@ async def _(event):
             logger.warn(str(e))  # pylint:disable=E0602
 
 
-@borg.on(events.NewMessage(  # pylint:disable=E0602
     incoming=True,
     func=lambda e: bool(e.mentioned or e.is_private)
 ))
