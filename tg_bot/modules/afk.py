@@ -2,9 +2,6 @@
 Syntax: .afk REASON"""
 import asyncio
 import datetime
-from telethon import events
-from telethon.tl import functions, types
-from userbot.utils import admin_cmd
 
 global USER_AFK  # pylint:disable=E0602
 global afk_time  # pylint:disable=E0602
