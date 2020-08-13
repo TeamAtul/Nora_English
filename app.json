@@ -73,11 +73,11 @@
     },
     "BAN_STICKER": {
       "description": "Which sticker to use when banning people. Use https://telegram.dog/ShowJsonBot to get the file_id",
-      "value": "AAMCBQADGQEAAQWztl81MTnGDtWbZc9ZDcLg_4-u21_-AAJqAQAC-4-oVemcgww58mZmlwgqbHQAAwEAB20AA-hxAAIaBA"
+      "value": "AQADlwgqbHQAA-hxAAI"
     },
     "MUTE_STICKER": {
       "description": "Which sticker to use when Muting people. Use https://telegram.dog/ShowJsonBot to get the file_id",
-      "value": "AAMCBQADGQEAAQWzuF81MX2_gcQa35Z7gECaRlpsm7L8AAIiAgACNhSoVXtkccoCCD6GedFXbHQAAwEAB20AA8seAAIaBA"
+      "value": "AQADedFXbHQAA8seAAI"
     }
   },
   "addons": [
