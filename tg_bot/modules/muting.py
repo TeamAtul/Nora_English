@@ -7,7 +7,7 @@ from telegram.ext import CommandHandler, Filters
 from telegram.ext.dispatcher import run_async
 from telegram.utils.helpers import mention_html
 
-from tg_bot import dispatcher, LOGGER
+from tg_bot import dispatcher, MUTE_STICKER, LOGGER
 from tg_bot.modules.helper_funcs.chat_status import bot_admin, user_admin, is_user_admin, can_restrict
 from tg_bot.modules.helper_funcs.extraction import extract_user, extract_user_and_text
 from tg_bot.modules.helper_funcs.string_handling import extract_time
@@ -166,7 +166,7 @@ def temp_mute(bot: Bot, update: Update, args: List[str]) -> str:
     except BadRequest as excp:
         if excp.message == "Reply message not found":
             # Do not reply
-            message.reply_text("shut up! 😠 Muted for {}!".format(time_val), quote=False)
+            message.reply_text("**shut up!** 🤫🤫 `Muted for` {}!".format(time_val), quote=False)
             return log
         else:
             LOGGER.warning(update)
