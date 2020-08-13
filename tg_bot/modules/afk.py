@@ -1,88 +1,132 @@
-from typing import Optional
+"""AFK Plugin for Friday
+Syntax: .afk REASON"""
+import asyncio
+import datetime
+from telethon import events
+from telethon.tl import functions, types
+from userbot.utils import admin_cmd
 
-from telegram import Message, Update, Bot, User
-from telegram import MessageEntity
-from telegram.ext import Filters, MessageHandler, run_async
-
-from tg_bot import dispatcher
-from tg_bot.modules.disable import DisableAbleCommandHandler, DisableAbleRegexHandler
-from tg_bot.modules.sql import afk_sql as sql
-from tg_bot.modules.users import get_user_id
-
-AFK_GROUP = 7
-AFK_REPLY_GROUP = 8
-
-
-@run_async
-def afk(bot: Bot, update: Update):
-    args = update.effective_message.text.split(None, 1)
-    if len(args) >= 2:
-        reason = args[1]
-    else:
-        reason = ""
-
-    sql.set_afk(update.effective_user.id, reason)
-    update.effective_message.reply_text("{} is away from the keyboard ! ".format(update.effective_user.first_name))
+global USER_AFK  # pylint:disable=E0602
+global afk_time  # pylint:disable=E0602
+global last_afk_message  # pylint:disable=E0602
+USER_AFK = {}
+afk_time = None
+last_afk_message = {}
 
 
-@run_async
-def no_longer_afk(bot: Bot, update: Update):
-    user = update.effective_user  # type: Optional[User]
+@borg.on(events.NewMessage(outgoing=True))  # pylint:disable=E0602
+async def set_not_afk(event):
+    global USER_AFK  # pylint:disable=E0602
+    global afk_time  # pylint:disable=E0602
+    global last_afk_message  # pylint:disable=E0602
+    current_message = event.message.message
+    if ".afk" not in current_message and "yes" in USER_AFK:  # pylint:disable=E0602
+        try:
+            await borg.send_message(  # pylint:disable=E0602
+                Config.PLUGIN_CHANNEL,  # pylint:disable=E0602
+                "#AfkLogger My Boss Went Afk"
+            )
+        except Exception as e:  # pylint:disable=C0103,W0703
+            await borg.send_message(  # pylint:disable=E0602
+                event.chat_id,
+                "Please set `PLUGIN_CHANNEL` " + \
+                "for the proper functioning of afk functionality " + \
+                "in @FridayOT\n\n `{}`".format(str(e)),
+                reply_to=event.message.id,
+                silent=True
+            )
+        USER_AFK = {}  # pylint:disable=E0602
+        afk_time = None  # pylint:disable=E0602
 
-    if not user:  # ignore channels
+@borg.on(admin_cmd(pattern=r"afk ?(.*)"))
+
+async def _(event):
+    if event.fwd_from:
         return
+    global USER_AFK  # pylint:disable=E0602
+    global afk_time  # pylint:disable=E0602
+    global last_afk_message  # pylint:disable=E0602
+    global reason
+    USER_AFK = {}
+    afk_time = None
+    last_afk_message = {}
+    reason = event.pattern_match.group(1)
+    if not USER_AFK:  # pylint:disable=E0602
+        last_seen_status = await borg(  # pylint:disable=E0602
+            functions.account.GetPrivacyRequest(
+                types.InputPrivacyKeyStatusTimestamp()
+            )
+        )
+        if isinstance(last_seen_status.rules, types.PrivacyValueAllowAll):
+            afk_time = datetime.datetime.now()  # pylint:disable=E0602
+        USER_AFK = f"yes: {reason}"  # pylint:disable=E0602
+        if reason:
+            await event.edit(f"My Boss Is Going Afk ! And The Reason is {reason}")
+        else:
+            await event.edit(f"My Boss is Going")
+        await asyncio.sleep(5)
+        await event.delete()
+        try:
+            await borg.send_message(  # pylint:disable=E0602
+                Config.PLUGIN_CHANNEL,  # pylint:disable=E0602
+                f"#AfkLogger Reason : {reason}"
+            )
+        except Exception as e:  # pylint:disable=C0103,W0703
+            logger.warn(str(e))  # pylint:disable=E0602
 
-    res = sql.rm_afk(user.id)
-    if res:
-        update.effective_message.reply_text("{} Not far from the keyboard now !".format(update.effective_user.first_name))
 
-
-@run_async
-def reply_afk(bot: Bot, update: Update):
-    message = update.effective_message  # type: Optional[Message]
-    if message.entities and message.parse_entities([MessageEntity.TEXT_MENTION, MessageEntity.MENTION]):
-        entities = message.parse_entities([MessageEntity.TEXT_MENTION, MessageEntity.MENTION])
-        for ent in entities:
-            if ent.type == MessageEntity.TEXT_MENTION:
-                user_id = ent.user.id
-                fst_name = ent.user.first_name
-
-            elif ent.type == MessageEntity.MENTION:
-                user_id = get_user_id(message.text[ent.offset:ent.offset + ent.length])
-                if not user_id:
-                    # Should never happen, since for a user to become AFK they must have spoken. Maybe changed username?
-                    return
-                chat = bot.get_chat(user_id)
-                fst_name = chat.first_name
-
-            else:
-                return
-
-            if sql.is_afk(user_id):
-                user = sql.check_afk_status(user_id)
-                if not user.reason:
-                    res = "{} is away from the keyboard ! reason :\n{} ".format(fst_name)
+@borg.on(events.NewMessage(  # pylint:disable=E0602
+    incoming=True,
+    func=lambda e: bool(e.mentioned or e.is_private)
+))
+async def on_afk(event):
+    if event.fwd_from:
+        return
+    global USER_AFK  # pylint:disable=E0602
+    global afk_time  # pylint:disable=E0602
+    global last_afk_message  # pylint:disable=E0602
+    afk_since = "`a while ago`"
+    current_message_text = event.message.message.lower()
+    if "afk" in current_message_text:
+        # userbot's should not reply to other userbot's
+        # https://core.telegram.org/bots/faq#why-doesn-39t-my-bot-see-messages-from-other-bots
+        return False
+    if USER_AFK and not (await event.get_sender()).bot:  # pylint:disable=E0602
+        if afk_time:  # pylint:disable=E0602
+            now = datetime.datetime.now()
+            datime_since_afk = now - afk_time  # pylint:disable=E0602
+            time = float(datime_since_afk.seconds)
+            days = time // (24 * 3600)
+            time = time % (24 * 3600)
+            hours = time // 3600
+            time %= 3600
+            minutes = time // 60
+            time %= 60
+            seconds = time
+            if days == 1:
+                afk_since = "**Yesterday**"
+            elif days > 1:
+                if days > 6:
+                    date = now + \
+                        datetime.timedelta(
+                            days=-days, hours=-hours, minutes=-minutes)
+                    afk_since = date.strftime("%A, %Y %B %m, %H:%I")
                 else:
-                    res = "{} is away from the keyboard ! reason :\n{}. ".format(fst_name, user.reason)
-                message.reply_text(res)
-
-
-__help__ = """
- - /afk <reason>: mark yourself as AFK.
- - brb <reason>: same as the afk command - but not a command.
-
-When marked as AFK, any mentions will be replied to with a message to say you're not available!
-"""
-
-__mod_name__ = "AFK"
-
-AFK_HANDLER = DisableAbleCommandHandler("afk", afk)
-AFK_REGEX_HANDLER = DisableAbleRegexHandler("(?i)brb", afk, friendly="afk")
-NO_AFK_HANDLER = MessageHandler(Filters.all & Filters.group, no_longer_afk)
-AFK_REPLY_HANDLER = MessageHandler(Filters.entity(MessageEntity.MENTION) | Filters.entity(MessageEntity.TEXT_MENTION),
-                                   reply_afk)
-
-dispatcher.add_handler(AFK_HANDLER, AFK_GROUP)
-dispatcher.add_handler(AFK_REGEX_HANDLER, AFK_GROUP)
-dispatcher.add_handler(NO_AFK_HANDLER, AFK_GROUP)
-dispatcher.add_handler(AFK_REPLY_HANDLER, AFK_REPLY_GROUP)
+                    wday = now + datetime.timedelta(days=-days)
+                    afk_since = wday.strftime('%A')
+            elif hours > 1:
+                afk_since = f"`{int(hours)}h{int(minutes)}m` **ago**"
+            elif minutes > 0:
+                afk_since = f"`{int(minutes)}m{int(seconds)}s` **ago**"
+            else:
+                afk_since = f"`{int(seconds)}s` **ago**"
+        msg = None
+        message_to_reply = f"**My Boss is AFK** ! \n\n**Reason** : `{reason}` \n\n**Afk Since** : {afk_since}" + \
+            f"\n\n__Kindly Leave A Message__ ! \n`He Will Reply To You Soon !`" \
+            if reason \
+            else f"**Hello, Boss Is AFK Right Now And May Be Forgot List Reason ! Any Way He Will Come Back Soon !**"
+        msg = await event.reply(message_to_reply)
+        await asyncio.sleep(5)
+        if event.chat_id in last_afk_message:  # pylint:disable=E0602
+            await last_afk_message[event.chat_id].delete()  # pylint:disable=E0602
+        last_afk_message[event.chat_id] = msg  # pylint:disable=E0602
